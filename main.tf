@@ -7,7 +7,7 @@ resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"
 
   tags = {
-    Name = "my-vpc"
+    Name = "eyay-vpc"
   }
 }
 
@@ -85,8 +85,8 @@ resource "aws_security_group" "backend_sg" {
   vpc_id      = aws_vpc.my_vpc.id
 
   ingress {
-    from_port   = 8080  # Assuming the REST API runs on port 8080
-    to_port     = 8080
+    from_port   = 7861  # Assuming the REST API runs on port 8080
+    to_port     = 7861
     protocol    = "tcp"
     security_groups = [aws_security_group.frontend_sg.id]  # Allow access from frontend SG
   }
@@ -99,64 +99,46 @@ resource "aws_security_group" "backend_sg" {
   }
 }
 
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "Allow SSH inbound traffic"
+  vpc_id      = aws_vpc.my_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Replace with a more restrictive CIDR block if needed
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 # Create public frontend instance
 resource "aws_instance" "frontend" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Replace with your desired AMI
+  ami           = "ami-0c7217cdde317cfec"  # UBUNTU AMI
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.public_subnet.id
-  vpc_security_group_ids = [aws_security_group.frontend_sg.id]
+  key_name      = "eyay_pc"
+  associate_public_ip_address = true
+  vpc_security_group_ids = [aws_security_group.frontend_sg.id, aws_security_group.allow_ssh.id]
 }
 
 # Create private backend instance
 resource "aws_instance" "backend" {
-  ami           = "ami-0cc6600d3650d2611"  # Replace with your desired AMI (consider using Amazon Linux 2 for its lightweight nature)
+  ami           = "ami-0c7217cdde317cfec"  # Replace with your desired AMI (consider using Amazon Linux 2 for its lightweight nature)
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
-  vpc_security_group_ids = [aws_security_group.backend_sg.id]
+  vpc_security_group_ids = [aws_security_group.backend_sg.id, aws_security_group.allow_ssh.id]
+  key_name      = "eyay_pc"
   private_ip = "10.0.1.10"  # Assign a static private IP address for easier reference (optional)
 }
 
-# Configure frontend to access backend IP
-resource "aws_eip" "public_ip" {
-  vpc = aws_vpc.my_vpc.id
-}
-
-resource "aws_nat_gateway" "nat_gateway" {
-  subnet_id = aws_subnet.public_subnet.id
-
-  tags = {
-    Name = "my-nat-gateway"
-  }
-}
-
-resource "aws_route_table" "private_route_table" {
-  vpc_id = aws_vpc.my_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_nat_gateway.nat_gateway.id
-  }
-
-  tags = {
-    Name = "private-route-table"
-  }
-}
-
-resource "aws_route_table_association" "private_subnet_association" {
-  subnet_id      = aws_subnet.private_subnet.id
-  route_table_id = aws_route_table.private_route_table.id
-}
-
-resource "aws_instance_attachment" "nat_gateway_attachment" {
-  instance_id = aws_instance.frontend.id
-  vpc_security_group_ids = [aws_security_group.frontend_sg.id]
-  device_index = 100  # Arbitrary device index for the network interface
-}
-
-output "frontend_ip" {
-  value = aws_eip.public_ip.public_ip
-}
-
-output "backend_ip" {
-  value = aws_instance.backend.private_ip
+output "private_ip" {
+    value = aws_instance.backend.private_ip
 }
