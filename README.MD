@@ -1,6 +1,6 @@
 
 # AWS
-1. user `rsandagon_admin` in IAM [Identity Center](https://d-9067f56e63.awsapps.com/start) 
+1. user `admin` in IAM [Identity Center](https://d-9067f56e63.awsapps.com/start) 
 1. export AWS credentials `export AWS_ACCESS_KEY_ID=` and `export AWS_SECRET_ACCESS_KEY=`
 1. run `terraform init` to initialize tf
 1. run `terraform plan` to see changes
